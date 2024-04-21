@@ -14,15 +14,20 @@ import com.yupi.springbootinit.constant.CommonConstant;
 import com.yupi.springbootinit.constant.UserConstant;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.exception.ThrowUtils;
+import com.yupi.springbootinit.manager.AiManager;
+import com.yupi.springbootinit.manager.CosManager;
 import com.yupi.springbootinit.model.dto.chart.*;
 import com.yupi.springbootinit.model.entity.Chart;
 import com.yupi.springbootinit.model.entity.User;
+import com.yupi.springbootinit.model.vo.AIChartVO;
 import com.yupi.springbootinit.service.ChartService;
 import com.yupi.springbootinit.service.UserService;
+import com.yupi.springbootinit.utils.ExcelUtils;
 import com.yupi.springbootinit.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -39,10 +44,16 @@ import javax.servlet.http.HttpServletRequest;
 public class ChartController {
 
     @Resource
-    private ChartService ChartService;
+    private ChartService chartService;
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private CosManager cosManager;
+
+    @Resource
+    private AiManager aiManager;
 
     private final static Gson GSON = new Gson();
 
@@ -64,7 +75,7 @@ public class ChartController {
         BeanUtils.copyProperties(ChartAddRequest, Chart);
         User loginUser = userService.getLoginUser(request);
         Chart.setUserId(loginUser.getId());
-        boolean result = ChartService.save(Chart);
+        boolean result = chartService.save(Chart);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         long newChartId = Chart.getId();
         return ResultUtils.success(newChartId);
@@ -85,13 +96,13 @@ public class ChartController {
         User user = userService.getLoginUser(request);
         long id = deleteRequest.getId();
         // 判断是否存在
-        Chart oldChart = ChartService.getById(id);
+        Chart oldChart = chartService.getById(id);
         ThrowUtils.throwIf(oldChart == null, ErrorCode.NOT_FOUND_ERROR);
         // 仅本人或管理员可删除
         if (!oldChart.getUserId().equals(user.getId()) && !userService.isAdmin(request)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
-        boolean b = ChartService.removeById(id);
+        boolean b = chartService.removeById(id);
         return ResultUtils.success(b);
     }
 
@@ -111,9 +122,9 @@ public class ChartController {
         BeanUtils.copyProperties(ChartUpdateRequest, Chart);
         long id = ChartUpdateRequest.getId();
         // 判断是否存在
-        Chart oldChart = ChartService.getById(id);
+        Chart oldChart = chartService.getById(id);
         ThrowUtils.throwIf(oldChart == null, ErrorCode.NOT_FOUND_ERROR);
-        boolean result = ChartService.updateById(Chart);
+        boolean result = chartService.updateById(Chart);
         return ResultUtils.success(result);
     }
 
@@ -123,12 +134,12 @@ public class ChartController {
      * @param id
      * @return
      */
-    @GetMapping("/get/vo")
+    @GetMapping("/get")
     public BaseResponse<Chart> getChartVOById(long id, HttpServletRequest request) {
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        Chart chart = ChartService.getById(id);
+        Chart chart = chartService.getById(id);
         if (chart == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
@@ -142,14 +153,14 @@ public class ChartController {
      * @param request
      * @return
      */
-    @PostMapping("/list/page/vo")
+    @PostMapping("/list/page")
     public BaseResponse<Page<Chart>> listChartVOByPage(@RequestBody ChartQueryRequest chartQueryRequest,
             HttpServletRequest request) {
         long current = chartQueryRequest.getCurrent();
         long size = chartQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
-        Page<Chart> ChartPage = ChartService.page(new Page<>(current, size),
+        Page<Chart> ChartPage = chartService.page(new Page<>(current, size),
                 getQueryWrapper(chartQueryRequest));
         return ResultUtils.success(ChartPage);
     }
@@ -161,7 +172,7 @@ public class ChartController {
      * @param request
      * @return
      */
-    @PostMapping("/my/list/page/vo")
+    @PostMapping("/my/list/page")
     public BaseResponse<Page<Chart>> listMyChartVOByPage(@RequestBody ChartQueryRequest chartQueryRequest,
             HttpServletRequest request) {
         if (chartQueryRequest == null) {
@@ -173,8 +184,7 @@ public class ChartController {
         long size = chartQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
-        Page<Chart> ChartPage = ChartService.page(new Page<>(current, size),
-                getQueryWrapper(chartQueryRequest));
+        Page<Chart> ChartPage = chartService.page(new Page<>(current, size),getQueryWrapper(chartQueryRequest));
         return ResultUtils.success(ChartPage);
     }
 
@@ -198,13 +208,13 @@ public class ChartController {
         User loginUser = userService.getLoginUser(request);
         long id = ChartEditRequest.getId();
         // 判断是否存在
-        Chart oldChart = ChartService.getById(id);
+        Chart oldChart = chartService.getById(id);
         ThrowUtils.throwIf(oldChart == null, ErrorCode.NOT_FOUND_ERROR);
         // 仅本人或管理员可编辑
         if (!oldChart.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
-        boolean result = ChartService.updateById(Chart);
+        boolean result = chartService.updateById(Chart);
         return ResultUtils.success(result);
     }
 
@@ -236,4 +246,67 @@ public class ChartController {
         return queryWrapper;
     }
 
+    /**
+     * 智能分析
+     *
+     * @param genChartByAiRequest
+     * @return
+     */
+    @PostMapping("/gen")
+    public BaseResponse<AIChartVO> genChartByAi(@RequestPart("file") MultipartFile multipartFile,
+                                           GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+        String name = genChartByAiRequest.getName();
+        String goal = genChartByAiRequest.getGoal();
+        String charType = genChartByAiRequest.getCharType();
+
+        //校验
+        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "目标为空");
+        ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "名称过长");
+        User loginuser = userService.getLoginUser(request);
+
+        //拼接所需图表类型
+        if (StringUtils.isNotBlank(charType)) {
+            goal += ",请使用" + charType;
+        }
+
+        //优化后的数据
+        String csvData = ExcelUtils.excelToCsv(multipartFile);
+        StringBuilder userInput = new StringBuilder();
+        userInput.append("分析目标:").append("\n").append(goal).append("\n");
+        userInput.append("原始数据:").append("\n").append(csvData);
+
+        //向AI提问
+        String res = aiManager.doChat(userInput.toString());
+        String[] reslist = res.split("【【【【【");
+        if (reslist.length < 3) {
+            System.out.println(reslist);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"AI响应错误！");
+        }
+        String genChart = reslist[1].replaceAll("\\n", "").replaceAll("\\\"", "\"");
+        String genRseult = reslist[2].trim();
+
+        //构建返回数据
+        AIChartVO chartVO = new AIChartVO();
+        chartVO.setGenChart(genChart);
+        chartVO.setGenResult(genRseult);
+
+        //数据保存到数据库
+        Chart chart = new Chart();
+        chart.setName(name);
+        chart.setGoal(goal);
+        chart.setCharType(charType);
+        chart.setChartData(csvData);
+        chart.setGenChart(genChart);
+        chart.setGenResult(genRseult);
+        chart.setUserId(loginuser.getId());
+        Boolean save = chartService.save(chart);
+        ThrowUtils.throwIf(!save, ErrorCode.SYSTEM_ERROR,"图标保存失败");
+
+        //交给前端
+        return ResultUtils.success(chartVO);
+    }
 }
+
+
+
+
