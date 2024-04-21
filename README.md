@@ -1,11 +1,14 @@
 # SpringBoot 项目初始模板
 
 > 作者：[程序员鱼皮](https://github.com/liyupi)
-> 仅分享于 [编程导航知识星球](https://yupi.icu)
 
 基于 Java SpringBoot 的项目初始模板，整合了常用框架和主流业务的示例代码。
 
 只需 1 分钟即可完成内容网站的后端！！！大家还可以在此基础上快速开发自己的项目。
+# 智能BI平台学习项目
+笔记：https://flowus.cn/share/5627ed7a-3e2b-4a8a-ab26-ae0d7946222a?code=EE8P6J
+
+【FlowUs 息流】智能BI项目
 
 [toc]
 
