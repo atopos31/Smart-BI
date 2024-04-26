@@ -21,6 +21,7 @@ import com.yupi.springbootinit.model.entity.Chart;
 import com.yupi.springbootinit.model.entity.User;
 import com.yupi.springbootinit.model.vo.AIChartVO;
 import com.yupi.springbootinit.service.ChartService;
+import com.yupi.springbootinit.service.SparkService;
 import com.yupi.springbootinit.service.UserService;
 import com.yupi.springbootinit.utils.ExcelUtils;
 import com.yupi.springbootinit.utils.SqlUtils;
@@ -58,6 +59,8 @@ public class ChartController {
     private final static Gson GSON = new Gson();
 
     // region 增删改查
+    public static Long ChartModelId = 1782007708766347266L;
+
 
     /**
      * 创建
@@ -72,6 +75,7 @@ public class ChartController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         Chart Chart = new Chart();
+        System.out.println(ChartAddRequest);
         BeanUtils.copyProperties(ChartAddRequest, Chart);
         User loginUser = userService.getLoginUser(request);
         Chart.setUserId(loginUser.getId());
@@ -253,16 +257,17 @@ public class ChartController {
      * @return
      */
     @PostMapping("/gen")
-    public BaseResponse<AIChartVO> genChartByAi(@RequestPart("file") MultipartFile multipartFile,
+    public BaseResponse<Chart> genChartByAi(@RequestPart("file") MultipartFile multipartFile,
                                            GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String charType = genChartByAiRequest.getCharType();
+        User loginuser = userService.getLoginUser(request);
+
 
         //校验
         ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "目标为空");
         ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "名称过长");
-        User loginuser = userService.getLoginUser(request);
 
         //拼接所需图表类型
         if (StringUtils.isNotBlank(charType)) {
@@ -276,13 +281,13 @@ public class ChartController {
         userInput.append("原始数据:").append("\n").append(csvData);
 
         //向AI提问
-        String res = aiManager.doChat(userInput.toString());
+        String res = aiManager.doChat(userInput.toString(),ChartModelId);
         String[] reslist = res.split("【【【【【");
         if (reslist.length < 3) {
             System.out.println(reslist);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR,"AI响应错误！");
         }
-        String genChart = reslist[1].replaceAll("\\n", "").replaceAll("\\\"", "\"");
+        String genChart = reslist[1].trim();
         String genRseult = reslist[2].trim();
 
         //构建返回数据
@@ -299,11 +304,11 @@ public class ChartController {
         chart.setGenChart(genChart);
         chart.setGenResult(genRseult);
         chart.setUserId(loginuser.getId());
-        Boolean save = chartService.save(chart);
-        ThrowUtils.throwIf(!save, ErrorCode.SYSTEM_ERROR,"图标保存失败");
+//        Boolean save = chartService.save(chart);
+//        ThrowUtils.throwIf(!save, ErrorCode.SYSTEM_ERROR,"图标保存失败");
 
         //交给前端
-        return ResultUtils.success(chartVO);
+        return ResultUtils.success(chart);
     }
 }
 

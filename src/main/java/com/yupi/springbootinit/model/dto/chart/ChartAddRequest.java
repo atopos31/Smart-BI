@@ -32,5 +32,15 @@ public class ChartAddRequest implements Serializable {
      */
     private String charType;
 
+    /**
+     * 生成的图表数据
+     */
+    private String genChart;
+
+    /**
+     * 生成的分析结论
+     */
+    private String genResult;
+
     private static final long serialVersionUID = 1L;
 }

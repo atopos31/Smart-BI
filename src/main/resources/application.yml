@@ -96,3 +96,8 @@ yuapi:
   client:
     access-key: tbktwb7j3kes51u7ur7wb315qtdifp4z
     secret-key: 4hru6t59amlsr0i8jpq4bnz6z4ps5bu5
+ai:
+  spark:
+    appId: fa7af321
+    apiKey: 2ec08699d411fc8c39c903511eb902ee
+    apiSecret: MTUyYTIyYTk0NTkxNjcyNzY0M2I5NjAw

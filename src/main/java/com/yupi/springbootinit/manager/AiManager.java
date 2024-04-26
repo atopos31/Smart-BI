@@ -16,10 +16,7 @@ public class AiManager {
 
     @Resource
     public YuCongMingClient client;
-
-    public static Long ModelId = 1782007708766347266L;
-
-    public String doChat(String msg) {
+    public String doChat(String msg,Long ModelId) {
         DevChatRequest devChatRequest = new DevChatRequest();
         devChatRequest.setModelId(ModelId);
         devChatRequest.setMessage(msg);

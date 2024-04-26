@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yupi.springbootinit.mapper.GraphMapper">
+
+    <resultMap id="BaseResultMap" type="com.yupi.springbootinit.model.entity.Graph">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="goal" column="goal" jdbcType="VARCHAR"/>
+            <result property="userid" column="userId" jdbcType="BIGINT"/>
+            <result property="gengraph" column="genGraph" jdbcType="VARCHAR"/>
+            <result property="genresult" column="genResult" jdbcType="VARCHAR"/>
+            <result property="createtime" column="createTime" jdbcType="TIMESTAMP"/>
+            <result property="updatetime" column="updateTime" jdbcType="TIMESTAMP"/>
+            <result property="isdelete" column="isDelete" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,name,goal,
+        userId,genGraph,genResult,
+        createTime,updateTime,isDelete
+    </sql>
+</mapper>
