@@ -21,7 +21,7 @@ spring:
   # todo 需替换配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/my_bi_db
+    url: jdbc:mysql://127.0.0.1:3306/my_bi_db
     username: root
     password: 980845
   # Redis 配置
